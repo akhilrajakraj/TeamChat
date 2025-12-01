@@ -1,0 +1,9 @@
+﻿# common ignores
+node_modules
+.env
+.env.local
+.env.*.local
+.DS_Store
+.vscode
+/dist
+backend/.venv
