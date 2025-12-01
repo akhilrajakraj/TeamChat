@@ -1,9 +1,14 @@
-﻿# common ignores
-node_modules
-.env
-.env.local
-.env.*.local
+# Python
+__pycache__/
+*.py[cod]
+backend/.venv/
+backend/.env
+
+# Node/Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# System
 .DS_Store
-.vscode
-/dist
-backend/.venv
+Thumbs.db
