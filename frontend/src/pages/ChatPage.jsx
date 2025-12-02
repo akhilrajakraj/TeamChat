@@ -3,12 +3,12 @@ import { io } from 'socket.io-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, Hash, LogOut, Send, PlusCircle, X, 
-  MessageSquare, Settings, Zap, Search, ArrowUpCircle, Trash2, Loader2 
-} from 'lucide-react';
+  MessageSquare, Settings, Zap, Search, ArrowUpCircle, Trash2, Loader2, Menu 
+} from 'lucide-react'; // Added 'Menu' to imports
 import api from '../api';
 
 // --- Visual Components ---
-const TeachatMiniLogo = () => { /* ... same logo code ... */ 
+const TeachatMiniLogo = () => { 
   const [step, setStep] = useState(0);
   useEffect(() => {
     const cycle = async () => {
@@ -44,14 +44,18 @@ export default function ChatPage({ user, onLogout }) {
   // Bonus Features State
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [typingUsers, setTypingUsers] = useState(new Set()); // Track who is typing
-  const [searchQuery, setSearchQuery] = useState(''); // Local search
+  const [typingUsers, setTypingUsers] = useState(new Set()); 
+  const [searchQuery, setSearchQuery] = useState(''); 
   const [showSearch, setShowSearch] = useState(false);
-  const typingTimeoutRef = useRef(null); // To debounce typing stop
+  
+  // MOBILE RESPONSIVENESS STATE
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  const typingTimeoutRef = useRef(null); 
 
   // 1. INITIALIZE SOCKET
   useEffect(() => {
-    const newSocket = io('http://localhost:4000', {
+    const newSocket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000', {
       transports: ['websocket', 'polling'],
       query: { user_id: user.id } 
     });
@@ -123,9 +127,11 @@ export default function ChatPage({ user, onLogout }) {
       setMessages([]);
       setOffset(0);
       setHasMore(true);
-      setTypingUsers(new Set()); // Reset typing on channel switch
+      setTypingUsers(new Set()); 
       loadMessages(activeChannel.id, 0, true);
       socket.emit('join_channel', { channel_id: activeChannel.id });
+      // Close mobile menu when channel is selected
+      setIsMobileMenuOpen(false);
     }
   }, [activeChannel, socket]);
 
@@ -134,11 +140,9 @@ export default function ChatPage({ user, onLogout }) {
   const handleInputChange = (e) => {
     setMessageInput(e.target.value);
     
-    // Emit typing event
     if (socket && activeChannel) {
       socket.emit('typing_start', { channel_id: activeChannel.id, username: user.username });
       
-      // Stop typing after 2 seconds of inactivity
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => {
         socket.emit('typing_stop', { channel_id: activeChannel.id, username: user.username });
@@ -192,7 +196,7 @@ export default function ChatPage({ user, onLogout }) {
 
     const tempContent = messageInput;
     setMessageInput('');
-    socket.emit('typing_stop', { channel_id: activeChannel.id, username: user.username }); // Stop typing immediately
+    socket.emit('typing_stop', { channel_id: activeChannel.id, username: user.username });
 
     const tempMsg = {
       id: Date.now(), tempId: Date.now(), content: tempContent,
@@ -216,17 +220,48 @@ export default function ChatPage({ user, onLogout }) {
     } catch (err) { alert('Failed to create channel'); }
   };
 
-  // Filter messages for search
   const displayedMessages = messages.filter(m => 
     m.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div className="flex h-screen bg-black text-slate-200 font-sans overflow-hidden selection:bg-indigo-500/30">
+    <div className="flex h-screen bg-black text-slate-200 font-sans overflow-hidden selection:bg-indigo-500/30 relative">
       
-      {/* SIDEBAR (Unchanged structure) */}
-      <motion.div initial={{ x: -100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="w-72 bg-gray-900/50 border-r border-white/10 flex flex-col backdrop-blur-xl relative z-20">
-        <div className="p-6 border-b border-white/5 bg-gradient-to-r from-gray-900 via-gray-900 to-indigo-900/20"><TeachatMiniLogo /></div>
+      {/* MOBILE OVERLAY BACKDROP */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 bg-black/80 z-40 md:hidden backdrop-blur-sm"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* SIDEBAR - Responsive Logic Added */}
+      <motion.div 
+        // We removed the 'initial={{ x: -100 }}' because it conflicts with CSS transform.
+        // We use CSS classes for the toggle logic now.
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        className={`
+          fixed inset-y-0 left-0 z-50 w-72 h-full
+          bg-gray-900/90 border-r border-white/10 flex flex-col backdrop-blur-xl 
+          transition-transform duration-300 ease-in-out
+          md:relative md:translate-x-0
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
+        <div className="p-6 border-b border-white/5 bg-gradient-to-r from-gray-900 via-gray-900 to-indigo-900/20 flex justify-between items-center">
+          <TeachatMiniLogo />
+          {/* Close button for mobile */}
+          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-gray-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-8">
           <div>
             <div className="flex items-center justify-between mb-4 px-2">
@@ -271,20 +306,30 @@ export default function ChatPage({ user, onLogout }) {
       </motion.div>
 
       {/* CHAT AREA */}
-      <div className="flex-1 flex flex-col bg-black relative overflow-hidden">
+      <div className="flex-1 flex flex-col bg-black relative overflow-hidden w-full">
         <div className="absolute top-0 left-0 w-full h-full z-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-900/20 rounded-full blur-[100px]" />
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-900/10 rounded-full blur-[100px]" />
         </div>
 
-        {/* Chat Header with SEARCH */}
-        <div className="h-16 border-b border-white/10 bg-gray-900/30 backdrop-blur-md flex items-center justify-between px-6 z-10 sticky top-0">
-          <div className="flex items-center gap-3">
-             <Hash className="w-6 h-6 text-indigo-500" />
-             <h3 className="text-lg font-bold text-white tracking-wide">{activeChannel ? activeChannel.name : 'Select a channel'}</h3>
-             {activeChannel && <span className="text-xs text-gray-500 px-2 py-0.5 border border-white/10 rounded-md">Topic: General Chat</span>}
+        {/* Chat Header with HAMBURGER + SEARCH */}
+        <div className="h-16 border-b border-white/10 bg-gray-900/30 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10 sticky top-0">
+          <div className="flex items-center gap-3 overflow-hidden">
+             {/* Mobile Toggle Button */}
+             <button 
+               onClick={() => setIsMobileMenuOpen(true)} 
+               className="md:hidden p-1 text-gray-400 hover:text-white transition-colors"
+             >
+               <Menu className="w-6 h-6" />
+             </button>
+
+             <Hash className="w-6 h-6 text-indigo-500 shrink-0" />
+             <div className="flex flex-col overflow-hidden">
+                <h3 className="text-lg font-bold text-white tracking-wide truncate">{activeChannel ? activeChannel.name : 'Select a channel'}</h3>
+                {activeChannel && <span className="text-xs text-gray-500 hidden sm:block">Topic: General Chat</span>}
+             </div>
           </div>
-          <div className="flex items-center gap-4 text-gray-500">
+          <div className="flex items-center gap-4 text-gray-500 shrink-0">
              {showSearch ? (
                <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 200, opacity: 1 }} className="relative">
                  <input autoFocus type="text" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-gray-800 text-white text-sm rounded-md px-3 py-1 outline-none border border-indigo-500/50" />
@@ -320,9 +365,9 @@ export default function ChatPage({ user, onLogout }) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
                   transition={{ duration: 0.3 }}
-                  className={`flex items-end gap-3 max-w-[80%] group ${isMe ? 'self-end flex-row-reverse' : 'self-start'}`}
+                  className={`flex items-end gap-3 max-w-[95%] md:max-w-[80%] group ${isMe ? 'self-end flex-row-reverse' : 'self-start'}`}
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-lg ${isMe ? 'bg-indigo-500 text-white' : 'bg-gray-800 text-gray-300'}`}>
+                  <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-xs font-bold shadow-lg ${isMe ? 'bg-indigo-500 text-white' : 'bg-gray-800 text-gray-300'}`}>
                     {msg.sender ? msg.sender[0].toUpperCase() : '?'}
                   </div>
                   <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
@@ -359,26 +404,26 @@ export default function ChatPage({ user, onLogout }) {
             </div>
           )}
 
-          {!activeChannel && <div className="flex flex-col items-center justify-center h-full text-gray-600"><MessageSquare className="w-16 h-16 mb-4 opacity-20" /><p>Select a channel to start chatting</p></div>}
+          {!activeChannel && <div className="flex flex-col items-center justify-center h-full text-gray-600 px-4 text-center"><MessageSquare className="w-16 h-16 mb-4 opacity-20" /><p>Select a channel to start chatting</p></div>}
         </div>
 
         {/* Input Area */}
-        <div className="p-6 bg-black/40 border-t border-white/10 z-20 backdrop-blur-md">
-          <form onSubmit={handleSendMessage} className="relative max-w-4xl mx-auto flex items-center gap-4">
+        <div className="p-4 md:p-6 bg-black/40 border-t border-white/10 z-20 backdrop-blur-md">
+          <form onSubmit={handleSendMessage} className="relative max-w-4xl mx-auto flex items-center gap-2 md:gap-4">
             <button type="button" className="text-gray-400 hover:text-white transition-colors"><PlusCircle className="w-6 h-6" /></button>
             <div className="relative flex-1">
-              <input type="text" value={messageInput} onChange={handleInputChange} placeholder={`Message #${activeChannel?.name || '...'}`} disabled={!activeChannel} className="w-full bg-gray-900/80 text-white placeholder-gray-500 rounded-xl pl-4 pr-12 py-4 border border-white/10 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 focus:outline-none transition-all shadow-inner" />
-              <button type="submit" disabled={!activeChannel || !messageInput.trim()} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50 disabled:bg-gray-700 transition-all transform active:scale-95"><Send className="w-4 h-4" /></button>
+              <input type="text" value={messageInput} onChange={handleInputChange} placeholder={`Message #${activeChannel?.name || '...'}`} disabled={!activeChannel} className="w-full bg-gray-900/80 text-white placeholder-gray-500 rounded-xl pl-4 pr-12 py-3 md:py-4 border border-white/10 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 focus:outline-none transition-all shadow-inner text-sm md:text-base" />
+              <button type="submit" disabled={!activeChannel || !messageInput.trim()} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 md:p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50 disabled:bg-gray-700 transition-all transform active:scale-95"><Send className="w-4 h-4" /></button>
             </div>
           </form>
-          <div className="text-center mt-2"><span className="text-[10px] text-gray-600">Press Enter to send • Shift + Enter for new line</span></div>
+          <div className="text-center mt-2 hidden md:block"><span className="text-[10px] text-gray-600">Press Enter to send â€¢ Shift + Enter for new line</span></div>
         </div>
       </div>
 
       {/* CREATE CHANNEL MODAL */}
       <AnimatePresence>
         {showCreateModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-gray-900 border border-white/10 rounded-2xl p-8 w-full max-w-md shadow-2xl relative overflow-hidden">
               <div className="absolute -top-20 -right-20 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
               <div className="flex justify-between items-center mb-6 relative z-10"><h3 className="text-2xl font-bold text-white">Create Channel</h3><button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-white"><X className="w-6 h-6" /></button></div>
