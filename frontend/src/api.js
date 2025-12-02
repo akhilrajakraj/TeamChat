@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+// HARDCODED CLOUD URL
+const BASE_URL = 'https://teachat-backend.onrender.com/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -10,7 +13,6 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
-    // We use simple string concatenation to avoid PowerShell escaping errors
     config.headers.Authorization = 'Bearer ' + token;
   }
   return config;

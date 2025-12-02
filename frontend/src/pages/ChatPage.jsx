@@ -55,7 +55,7 @@ export default function ChatPage({ user, onLogout }) {
 
   // 1. INITIALIZE SOCKET
   useEffect(() => {
-    const newSocket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000', {
+    const newSocket = io('https://teachat-backend.onrender.com',  {
       transports: ['websocket', 'polling'],
       query: { user_id: user.id } 
     });
@@ -416,7 +416,7 @@ export default function ChatPage({ user, onLogout }) {
               <button type="submit" disabled={!activeChannel || !messageInput.trim()} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 md:p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50 disabled:bg-gray-700 transition-all transform active:scale-95"><Send className="w-4 h-4" /></button>
             </div>
           </form>
-          <div className="text-center mt-2 hidden md:block"><span className="text-[10px] text-gray-600">Press Enter to send â€¢ Shift + Enter for new line</span></div>
+          <div className="text-center mt-2 hidden md:block"><span className="text-[10px] text-gray-600">Press Enter to send Ã¢â‚¬Â¢ Shift + Enter for new line</span></div>
         </div>
       </div>
 
