@@ -1,18 +1,4 @@
-﻿This is **Senior Architect**.
-
-Here is the complete, well-structured `README.md` file. It consolidates all the technical details, features, and setup instructions from our session into a professional document ready for your GitHub repository.
-
-### **Instructions**
-
-1.  Open **VS Code**.
-2.  Create/Open the file named **`README.md`** in your project root (`TeaChat/`).
-3.  **Copy and paste** the entire block below.
-4.  Save and push to GitHub.
-
------
-
-````markdown
-# 🍵 TeaChat - Real-Time Team Collaboration Platform
+﻿# 🍵 TeaChat - Real-Time Team Collaboration Platform
 
 **TeaChat** is a full-stack, real-time messaging application designed to facilitate seamless team communication. Built with performance and scalability in mind, it features instant messaging, channel management, and live presence tracking, packaged in a modern, responsive interface.
 
